@@ -96,6 +96,21 @@ Claude 的模型迭代速度比寫文章快。本系列的品牌價值全押在�
 - Opus 5 在 `xhigh` / `max` 下**無法關閉 thinking**（傳 `thinking: {"type":"disabled"}` 回 400）。
 - effort 會使快取失效——同一段對話中途改 effort 會打掉 prompt cache（Day9、Day12 可用）。
 - `adaptive` 是 thinking 模式，**不是** effort 值，不可混寫。
+- **Haiku 4.5 不在 effort 支援清單內**（支援清單：Fable 5、Mythos 5/Preview、Opus 5、
+  Opus 4.8/4.7/4.6、Sonnet 5、Sonnet 4.6、Opus 4.5）。Day14 不可寫成「所有模型都能設」。
+
+### 官方 400 錯誤訊息原文（Day15、Day16 可直接引用）
+
+Opus 5 / Sonnet 5 / Fable 5 收到 `thinking.type: "enabled"`：
+
+```text
+"thinking.type.enabled" is not supported for this model.
+Use "thinking.type.adaptive" and "output_config.effort" to control thinking behavior.
+```
+
+各模型 thinking 預設與拒絕值：Fable 5 永遠開啟（拒絕 `enabled`、`disabled`）；
+Opus 5 / Sonnet 5 預設開啟（拒絕 `enabled`；Opus 5 在 effort `xhigh`/`max` 下亦拒絕 `disabled`）；
+Haiku 4.5 預設關閉、僅支援 extended（拒絕 `adaptive`）。
 
 ### tokenizer 換代（Day11 的事實基礎）
 
