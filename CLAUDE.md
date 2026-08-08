@@ -117,6 +117,18 @@ Haiku 4.5 預設關閉、僅支援 extended（拒絕 `adaptive`）。
 換 tokenizer 的分界是 **Claude 4.7 世代**（Opus 4.7 起），不是 Sonnet 5 才換。
 官方明載 Sonnet 4.6 及更早使用舊 tokenizer。同樣文字約產生 **多 30%** tokens。
 
+**Day11 可直接用的實測方法（官方建議）：** token counting 端點會依你傳入的 `model`
+採用該模型的 tokenizer，所以拿同一段文字呼叫兩次、換不同 model，比較兩次的
+`input_tokens`，就能量出自己內容的實際增幅。官方明講不要沿用舊模型量到的數字估算成本。
+
+### Token counting API（Day5、Day11、Day13 可用）
+
+- 端點 `/v1/messages/count_tokens`，官方明載 **free to use**（不收費）。
+- 有獨立的 RPM 上限：Start 2,000 / Build 4,000 / Scale 8,000，
+  且與 message creation 的額度**互不相干**。
+- 回傳為**估計值**，實際可能有小幅差異；系統自動加入的 token 不計費。
+- 不會觸發快取邏輯（傳 `cache_control` 也不會真的建立快取）。
+
 **寫作本身建議使用：Opus 5 + effort high。**
 
 ---
