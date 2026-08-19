@@ -4,7 +4,6 @@
 
 如果有任何問題或建議，歡迎隨時聯繫我：
 
-- [GitHub](https://github.com/Chung-Chi-Lin)
 - [Email](mailto:z0925955648@gmail.com)
 
 ## 前言
@@ -74,10 +73,10 @@ Claude 的計價表上有兩個數字：input 和 output。而 output 的單價�
 | :--- | :--- | :--- | :---: |
 | Claude Fable 5 | 10 | 50 | **1 : 5** |
 | Claude Opus 5 | 5 | 25 | **1 : 5** |
-| Claude Sonnet 5 | 3 | 15 | **1 : 5** |
+| Claude Sonnet 5 | 2 | 10 | **1 : 5** |
 | Claude Haiku 4.5 | 1 | 5 | **1 : 5** |
 
-（單位是每百萬 token 的美元，2026 年 8 月查證。Sonnet 5 目前有導入優惠 2 / 10——**比例仍是 1:5**。）
+（單位是每百萬 token 的美元，2026 年 8 月查證，**比例仍是 1:5**。）
 
 四個模型、橫跨 10 倍的價格區間，output 對 input 的比例**完全一致**。
 
