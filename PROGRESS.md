@@ -62,7 +62,7 @@
 | `day26/README.md` | 錯誤處理、重試與冪等性 | ~1946 字 |
 | `day27/README.md` | 模型分流原理與 FrugalGPT 出處 | ~1755 字 |
 | `day28/README.md` | 三層成本優化架構 | ~1698 字 |
-| `day29/README.md` | 30 天踩坑與心法反思 | ~1730 字 |
+| `day29/README.md` | Vibecoding 盲區與提問反轉 | ~1730 字 |
 | `day30/README.md` | 全系列速查表總整理 | ~1396 字 |
 
 ### Git 狀態
@@ -91,7 +91,7 @@
 | :--- | :--- | :--- | :--- |
 | Day 2 | Claude 模型價格全解析 | Claude 的計價邏輯：搞懂 input / output 為什麼差 5 倍 | 價格不是重點，改講結構 |
 | Day 11 | Sonnet 5 換了 tokenizer | 新世代 tokenizer | 事實錯誤：換代分界是 4.7 世代，非 Sonnet 5 |
-| Day 29 | 從「會用」到「用得省」 | 從「會用」到「用得對、用得省」 | 對齊書名的雙軸 |
+| Day 29 | 從「會用」到「用得對、用得省」：我 30 天的踩坑與心法 | Vibecoding 做出網站之後：AI 不會主動告訴你的那些事 | 原稿是寫作過程自述，改為對讀者更有用的 vibecoding 盲區主題 |
 
 ---
 
