@@ -192,7 +192,50 @@ for turn in conversation_turns:
 >
 > 官方給的最佳實踐排序也是這個邏輯：**先用 effort 設定整個工作負載的預設平衡點，如果同一個 effort 下某些請求的觸發行為還是不符合需求，才用 prompt 語句做微調**——而不是把 effort 本身當成逐輪調整的旋鈕。
 
-## 八、effort 跟換模型，是兩個不同層級的旋鈕
+## 八、不寫程式的人：在 Claude Code 裡調 effort
+
+前面七節都在講 `output_config.effort` 這個 API 參數。但如果你是在 Claude Code 裡工作，**這個旋鈕一樣在你手上，而且更好轉。**
+
+**`/effort` 指令**有三種用法：
+
+```text
+/effort              → 開一個互動滑桿讓你選
+/effort medium       → 直接設定成指定檔位
+/effort auto         → 重置回這個模型的預設值
+```
+
+也可以在 `/model` 選單裡用**左右方向鍵**調整 effort 滑桿，或啟動時用 `--effort` 指定單一 session。
+
+**怎麼確認現在跑在哪一檔？** 看 session 標題列——它會顯示在模型名稱旁邊，例如「with low effort」。啟動時和每次變更時，底部也會短暫顯示。**這比 API 情境好排查得多，你不用翻程式碼就知道現在是什麼設定。**
+
+**各模型支援的檔位不一樣，設錯會自動降級：**
+
+| 模型 | 可用檔位 |
+| :--- | :--- |
+| Fable 5、Opus 5、Sonnet 5、Opus 4.8、Opus 4.7 | `low` / `medium` / `high` / `xhigh` / `max` |
+| Opus 4.6、Sonnet 4.6 | `low` / `medium` / `high` / `max`（沒有 `xhigh`） |
+
+官方說明：**如果你設了目前模型不支援的檔位，Claude Code 會自動退到「不高於你設定值的最高可用檔位」**——例如在 Opus 4.6 上設 `xhigh`，實際會跑 `high`。這呼應第二節講的「支援 `max` 不代表支援 `xhigh`」，只是 Claude Code 幫你做了優雅降級，不會直接報錯。
+
+**預設值也有一個例外**：大多數模型預設是 `high`，但 **Opus 4.7 預設是 `xhigh`**。
+
+### 一個特例：`ultrathink` 關鍵字
+
+這個發現很有意思，而且它是 Day 15 那個論點的**唯一例外**。
+
+Day 15 會講「你不用再寫 think step by step 了」。但 Claude Code 認得一個關鍵字——**在 prompt 裡任何位置寫 `ultrathink`，可以要求模型在這一輪做更深的推理，而且不改變你的 session effort 設定。**
+
+官方特別澄清了一件事：
+
+> Claude Code passes other phrases such as "think", "think hard", and "think more" through as ordinary prompt text and doesn't recognize them as keywords.
+>
+> （「think」「think hard」「think more」這類詞會被當成普通的 prompt 文字傳過去，**不會被辨識為關鍵字**。）
+
+換句話說：**那些你習慣寫的「請仔細思考」咒語，在 Claude Code 裡真的只是普通文字**（雖然它們仍可能透過一般的 prompt 引導產生效果，見 Day 15）；只有 `ultrathink` 這一個字是 Claude Code 明確辨識的開關。
+
+什麼時候用它？**當你不想為了一題困難的問題，把整個 session 的 effort 都調高**——調高 effort 會打斷快取（第六節），而 `ultrathink` 只影響這一輪。
+
+## 九、effort 跟換模型，是兩個不同層級的旋鈕
 
 容易被混在一起的兩件事：**調 effort** 跟 **換模型**（Day 3、Day 4、Day 6 講過的選型邏輯），都能達到「省成本」的效果，但作用的層級不一樣。
 
@@ -219,6 +262,8 @@ Opus 5 有兩個特別的地方要記住：`xhigh`/`max` 下無法關閉 thinkin
 - **Effort 影響全部 token**：涵蓋文字回應、工具呼叫與 thinking，不需要額外啟用 thinking 才有效。
 - **快取失效**：跨請求改變 effort 值會讓對話快取失效，官方建議整段對話固定 effort，改用 prompt 語句微調。
 - **Opus 5 特例**：`xhigh`/`max` 下無法關閉 thinking（回 400），且 effort 不保證縮短可見回應長度。
+- **`/effort` 指令**：Claude Code 端的對應操作，可開滑桿、直接指定檔位或 `auto` 重置；不支援的檔位會自動降到最高可用值。
+- **`ultrathink` 關鍵字**：寫在 prompt 任何位置可要求該輪深入推理而不改動 session 設定；「think」「think hard」則**不被辨識**為關鍵字。
 
 明天接著講跟 effort 綁在一起的另一半——**Adaptive Thinking**。為什麼你不用再寫「think step by step」了，模型自己怎麼決定要不要思考、思考多深。
 
