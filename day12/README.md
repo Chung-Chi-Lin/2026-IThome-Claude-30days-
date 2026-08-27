@@ -168,7 +168,38 @@ context_management={
 
 土法煉鋼不是不能用——如果你需要完全自訂的摘要邏輯（例如只保留特定格式的資訊），Context Editing 或自訂 `instructions` 的 Compaction 仍然是更貼近的選擇。但如果你只是想「讓長對話不要撞牆」，官方的伺服器端方案能省下不少自己維護的邊角案例。
 
-## 六、Before / After：一個跑很久的代理任務
+## 六、不寫程式的人，怎麼處理長對話？
+
+前面五節都在講 API 參數。但長對話變貴這件事，**在 Claude Code 裡是每天都會遇到的**——而且你不用設定 `context_management`，因為它已經幫你做了。
+
+**Claude Code 會在接近上限時自動壓縮**（auto-compact），機制跟前面講的伺服器端摘要是同一件事，只是觸發與設定改成指令形式。對照一下你會發現，API 有的控制項，這裡幾乎都有對應：
+
+| API 做法（前面幾節） | Claude Code 的對應 |
+| :--- | :--- |
+| `compact_20260112` 自動觸發 | 接近上限時自動壓縮，不用設定 |
+| `trigger` 調整觸發門檻 | `/autocompact 500k` 指定多滿才觸發 |
+| `instructions` 自訂摘要重點 | `/compact focus on the auth bug fix` |
+| 手動清除特定內容 | `/rewind` 選一則訊息 →「Summarize from here／up to here」 |
+| — | `/clear` 切換到不相關任務時直接清空 |
+| — | `/context` 看目前 context 被什麼佔用 |
+
+**四個實際可用的操作，由輕到重：**
+
+**① 先看看再說：`/context`。** 它會列出目前 context 的分類佔用明細，還會附上優化建議，包含載入了哪些 `CLAUDE.md` 與記憶檔案。**在你猜「是不是對話太長了」之前，先用這個看實際數字。**
+
+**② 換任務就 `/clear`。** 官方的說法很直接：「舊對話會排擠掉你接下來需要的檔案，而且每一則訊息都在為它付費。」這跟 Day 8 技巧三是同一件事，只是有了具體指令。
+
+**③ 同一個任務但太長了，用帶指示的 `/compact`。** 直接寫 `/compact focus on the auth bug fix`——**摘要會保留你指定的重點，而不是讓自動摘要去猜什麼重要。** 這正是 API 那個 `instructions` 參數的日常版本。
+
+**④ 走錯路想砍掉重練，用 `/rewind` 而不是 `/compact`。** Day 9 講過原因：rewind 回到的前綴**早就快取過了**，compact 則要建立新前綴。而且 `/rewind` 還能選「從這裡開始摘要」或「摘要到這裡為止」，比整段壓縮更精準。
+
+**還有一個很多人沒想到的做法：把大量閱讀外包出去。** 如果你要 Claude 讀一堆檔案做研究，讓它開 **subagent** 去做——**subagent 有自己獨立的 context window，那些檔案內容留在它那邊，只有結論會回到你的對話裡。** 這是 Day 28 分層架構思維在單一 session 裡的縮小版。
+
+> **一個容易誤會的地方**：壓縮之後不是「全部重來」。官方文件有一張詳細的對照表說明什麼會被保留——**系統提示不受影響、`CLAUDE.md` 與記憶檔案會從磁碟重新載入、Claude 最近讀過的檔案會自動重讀最多五個**（挑最近修改的），你呼叫過的 skill 內容也會重新注入（每個上限 5,000 tokens）。
+>
+> 但**被摘要掉的就是被摘要掉了**——這正是 Day 20 會提醒的風險：如果你需要引用「很早以前對話裡的精確原文」，壓縮過後那段措辭可能已經不在了。重要的結論，該在壓縮前自己記下來。
+
+## 七、Before / After：一個跑很久的代理任務
 
 **❌ Before：什麼都不做，讓對話自然變長**
 
@@ -228,6 +259,7 @@ for step in agent_loop_steps:
 - **`usage.iterations`**：計算 compaction 請求真實總花費時必須加總的欄位，頂層 `input_tokens`/`output_tokens` 不含摘要成本。
 - **Context Editing**：`clear_tool_uses_20250919`（清除舊工具結果）與 `clear_thinking_20251015`（控制思考區塊保留），beta 功能，用於更細粒度的控制場景。
 - **官方優先順序**：多數情境優先用 server-side compaction，需要精細控制才切換到 context editing。
+- **Claude Code 的對應操作**：`/context` 看佔用、`/clear` 換任務、`/compact <重點>` 帶指示壓縮、`/autocompact` 調門檻、`/rewind` 精準截斷，以及用 subagent 把大量檔案閱讀隔離在獨立 context 裡。
 
 明天把成本這件事收尾——**光靠事後看帳單太晚了，怎麼在花超之前就先發現？** 從 usage 欄位到 Console 儀表板，把帳單變成一個可以主動監控的系統。
 
