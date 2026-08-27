@@ -143,7 +143,40 @@ fi
 
 **休息超過快取存活時間之後傳的第一則訊息，會整段快取失效、重新處理全部 context**——這也是為什麼「開著視窗放一整天，中午休息完回來問一句話，帳單卻很有感」的體感由來：不是那句話很貴，是那句話**觸發了整段舊 context 的重新計費**。如果你是訂閱帳號並且在用 usage credits，可以設定環境變數 `ENABLE_PROMPT_CACHING_1H=1` 保留 1 小時的存活時間，而不是降到 5 分鐘。
 
-## 七、寫具體 prompt，這條原則到哪裡都成立
+## 七、哪些操作會打斷快取（這張表值得貼在螢幕旁）
+
+Day 9 講過快取的原理是**前綴匹配**：只要前面那一段一模一樣就命中，中間有任何一個字不同，後面全部要重算。Claude Code 幫你把請求排成「系統提示 → 專案脈絡 → 對話歷史」三層，讓最不常變的排最前面——**但有些操作會直接改動前面那幾層，一改就是整段重算。**
+
+官方把這些動作列得很完整：
+
+| 會打斷快取（下一輪變慢也變貴） | 不會打斷（可以放心做） |
+| :--- | :--- |
+| `/model` 換模型（每個模型有各自的快取） | 編輯你 repo 裡的檔案 |
+| `/effort` 改檔位 | 切換權限模式（Shift+Tab） |
+| 開啟 fast mode | 呼叫 skill 或 slash command |
+| 接上或斷開 MCP 伺服器 | `/recap` |
+| 啟用／停用 plugin | **`/rewind`** |
+| 用 deny 規則整個封鎖某個工具 | 開 subagent |
+| `/compact` | |
+| 升級 Claude Code 後 resume 舊 session | |
+
+官方給的操作原則很簡單：
+
+> "Pick your model and effort level at the top of a session, then save `/compact` for natural breaks between tasks. **The fewer changes you make mid-task, the higher your cache hit rate.**"
+
+**開場就把模型跟 effort 選定，中途不要改。** 這句話呼應 Day 14 提過的「同一段對話裡固定 effort」——當時是從 API 角度講的，在 Claude Code 裡是同一件事，只是換成 `/model` 和 `/effort` 兩個指令。
+
+**三個容易踩到的細節：**
+
+**① 走錯路想回頭時，`/rewind` 比 `/compact` 便宜。** rewind 是把對話截斷回到之前某一輪，而**那個前綴早就快取過了，直接命中**；`/compact` 是生一份新摘要，等於建立全新前綴，得從頭寫入。官方原文：「Rewinding truncates back to a prefix that is already cached, rather than building a new one as compaction does.」
+
+**② 中途編輯 `CLAUDE.md` 不會打斷快取——但也不會生效。** 這點對本篇特別重要，因為前面整篇都在教你怎麼寫 `CLAUDE.md`。官方明講：專案根目錄與使用者層級的 `CLAUDE.md` **在 session 開始時讀取一次就留在記憶體裡**，你中途改它，Claude 仍然用開場時載入的那個版本。**新內容要等下一次 `/clear`、`/compact` 或重開才會套用。**（例外是子目錄裡的巢狀 `CLAUDE.md`，那些是 Claude 第一次讀到對應檔案時才載入，在載入前修改是會生效的。）
+
+**③ 快取範圍是「同一台機器 + 同一個目錄」。** 兩個不同目錄開的 session 不共用快取——**包含同一個 repo 的不同 git worktree**，因為系統提示裡帶了工作目錄路徑，路徑不同前綴就不同。如果你習慣開多個 worktree 平行作業，要知道它們各自在養自己的快取。
+
+（反過來，**同一個目錄下平行開的多個 session 會互相讀到對方的快取**，這是少數可以「共用」的情況。）
+
+## 八、寫具體 prompt，這條原則到哪裡都成立
 
 Day 17 的黃金法則在 Claude Code 裡一樣適用：
 
@@ -154,7 +187,7 @@ Day 17 的黃金法則在 Claude Code 裡一樣適用：
 
 模糊的請求會讓 Claude 為了搞懂你要什麼而擴大搜尋範圍，具體的請求能讓它幾乎不用探索就知道該改哪裡。
 
-## 八、追蹤花費：`/usage` 跟 `/insights`
+## 九、追蹤花費：`/usage` 跟 `/insights`
 
 養成定期檢查的習慣，比事後回頭查原因有效率得多。`/usage` 顯示目前 session 的詳細花費，包含依模型拆分的 token 用量；如果你是訂閱帳號，還能看到扣抵方案額度的分項統計，包含依 skill、subagent、外掛、個別 MCP 伺服器拆分的佔比——**這能直接告訴你,是哪一個 MCP 伺服器或哪一類操作在吃掉你大部分的額度**，比憑印象猜測準確得多。
 
@@ -206,6 +239,8 @@ Claude Code 的省錢邏輯，本質上是第二階段全部原則的實戰應�
 - **MCP 延遲載入**：工具定義預設只先進工具名稱，真正使用時才載入完整描述；`/context` 可查看目前佔用明細。
 - **Hooks 前置過濾**：在工具執行前攔截並精簡輸出，把上萬 token 的原始內容壓縮成重點。
 - **快取存活時間差異**：訂閱帳號 1 小時、API 金鑰預設 5 分鐘，休息超過此時間後的第一句話會觸發整段重新計費。
+- **打斷快取的動作**：`/model`、`/effort`、fast mode、MCP 增減、plugin 開關、`/compact` 都會重算前綴；編輯檔案、切權限模式、`/rewind` 則不會。
+- **`CLAUDE.md` 的載入時機**：session 開始時讀一次即駐留記憶體，中途編輯不會生效也不會打斷快取，須 `/clear`、`/compact` 或重開才套用。
 
 明天離開 Claude Code，回到更底層的問題——**Claude Code 能操作外部工具（檔案、Git、MCP 伺服器），這個「連接外部世界」的能力，背後的協定原理是什麼？**
 
