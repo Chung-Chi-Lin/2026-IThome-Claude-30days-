@@ -133,6 +133,22 @@ Adaptive thinking 把這個判斷收回模型自己身上。官方的說法是�
 
 **② 不要假設每一輪對話都會有 thinking 區塊。** 官方明確提醒：**不要寫出「假設每個 assistant 回合都以 thinking 區塊開頭」的應用邏輯**——沒有 thinking 區塊是正常行為，不是異常。
 
+**③ 有一個關鍵字是真的被特別處理的：`ultrathink`。**
+
+Claude Code 的官方文件裡有一段話，等於替今天的標題做了背書：
+
+> Claude Code recognizes the keyword and adds an in-context instruction. (...) Claude Code passes other phrases such as "think", "think hard", and "think more" through as ordinary prompt text and **doesn't recognize them as keywords**.
+>
+> （Claude Code 認得 `ultrathink` 這個關鍵字，並會為它加上一段 in-context 指令。（⋯）而「think」「think hard」「think more」這類說法，則是**當成普通的 prompt 文字傳過去，不被辨識為關鍵字**。）
+
+**但這裡有個很容易讀錯的地方，值得說清楚**：「不被辨識為關鍵字」**不等於「完全沒有效果」**。
+
+這兩件事的差別是——`ultrathink` 觸發的是一個**機制上的、有文件記載的**處理（系統會為它注入一段指令）；而「請仔細思考」這類寫法沒有這種特殊待遇，它就是一段普通的文字，**能不能起作用，取決於一般 prompt 引導本身的效力**（也就是上面第①點講的那件事——用語句去調整模型的觸發門檻，這確實有效）。
+
+所以精確的結論是：**你不再需要靠咒語來「啟動」思考**（模型自己會判斷），但**用自然語言引導它多想或少想，這條路仍然通**。差別只在於，除了 `ultrathink` 之外，沒有任何一個字是有特殊開關地位的。
+
+`ultrathink` 的實用價值在於：**當你只有這一題需要深入推理，不值得為它改動整個 session 的 effort 設定時**——Day 14 講過，改 effort 會打斷快取，而 `ultrathink` 只影響這一輪。
+
 ## 六、思考也能穿插在工具呼叫之間：Interleaved Thinking
 
 新世代模型還有一個自動獲得的能力：**Interleaved Thinking（交錯思考）**——Claude 可以在工具呼叫之間思考，針對每一次工具回傳的結果先反思一輪，再決定下一步該做什麼。
@@ -156,7 +172,31 @@ response = client.messages.create(
 
 **這裡有個計費上的重要細節**：不管 `display` 設成 `"summarized"` 還是 `"omitted"`，**你被計費的 token 數量完全一樣**——都是模型內部實際產生的完整思考量。差別只在於你看不看得到那段文字，不影響帳單。如果你想知道這次請求裡，thinking 實際佔了多少 output token，可以讀 `usage.output_tokens_details.thinking_tokens` 這個欄位。
 
-## 八、如果你手上還有舊的 `budget_tokens` 程式碼
+## 八、不寫程式的人：在 Claude Code 裡看見與控制 thinking
+
+上一節講的 `display` 參數是 API 情境的。如果你在 Claude Code 裡工作，**這些控制項全部都有，而且是鍵盤快捷鍵等級的方便。**
+
+**想看到思考過程？按 `Ctrl+O`。**
+
+Claude Code **預設會把思考輸出摺疊起來**，按 `Ctrl+O` 切換成 verbose 模式，思考內容會以灰色斜體顯示。這正是上一節那個「`thinking` 欄位是空的」在 Claude Code 裡的對應——不是沒思考，是預設不顯示。
+
+> **一個計費上的提醒，跟上一節完全一致**：官方明講「**You are charged for all thinking tokens generated, even when collapsed or redacted**」——**摺疊起來看不到，不代表沒算錢。** 你被計費的是模型實際產生的完整思考量，顯示與否只影響你看不看得到。
+
+**想開關 thinking？三個層級：**
+
+| 你要做的事 | 怎麼做 |
+| :--- | :--- |
+| 只切換這個 session | macOS 按 `Option+T`，Windows／Linux 按 `Alt+T` |
+| 設定全域預設 | 執行 `/config` 切換 thinking mode（會存成 `alwaysThinkingEnabled`） |
+| 不管 effort 一律關閉 | 環境變數 `MAX_THINKING_TOKENS=0` |
+
+**但 Fable 5 是例外，而且是徹底的例外。** 官方原文：**「Thinking cannot be turned off on Fable 5.」** 上面那三個方法——session 切換鍵、`alwaysThinkingEnabled`、`MAX_THINKING_TOKENS=0`——**在 Fable 5 上通通無效**。它會依 effort 檔位自己決定每一步要想多深，你關不掉。
+
+這跟第三節那張逐模型設定表是同一件事，只是換成了 Claude Code 的介面語言：**API 端 Fable 5 拒絕 `thinking: {"type": "disabled"}`，Claude Code 端則是那些開關直接對它不生效。** 同一個設計決定，兩種呈現方式。
+
+**還有一個給舊模型使用者的細節**：Fable 5、Sonnet 5、Opus 4.7 及之後的模型**永遠使用 adaptive reasoning**，`CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING` 這個環境變數對它們沒有作用。只有在 **Opus 4.6 與 Sonnet 4.6** 上，你才能設 `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING=1` 退回舊的固定思考預算模式（由 `MAX_THINKING_TOKENS` 控制）——這是第二節講的「新舊世代分界」在設定層面的最後一道殘留。
+
+## 九、如果你手上還有舊的 `budget_tokens` 程式碼
 
 如果你的專案是從舊世代模型遷移過來，程式碼裡可能還留著 extended thinking 的手動預算寫法：
 
@@ -205,6 +245,8 @@ Adaptive Thinking 把「該不該多想一下」這個判斷，從使用者手�
 - **逐請求判斷**：是否思考的決定發生在每一次請求層級，同一段對話裡有些回合會有 thinking 區塊、有些不會，屬正常行為。
 - **Interleaved Thinking**：adaptive thinking 下自動啟用，讓模型能在工具呼叫之間穿插思考，無需額外設定。
 - **`display` 設定**：預設 `"omitted"` 不回傳思考文字，設為 `"summarized"` 才看得到，但計費不受影響。
+- **`ultrathink`**：唯一被 Claude Code 明確辨識的思考關鍵字；「think hard」等說法只當普通 prompt 文字傳遞——**不被辨識為關鍵字 ≠ 完全無效**，兩者的差別在於有沒有機制層級的特殊處理。
+- **Claude Code 端的 thinking 控制**：`Ctrl+O` 展開思考內容、`Option`／`Alt+T` 切換本次 session、`/config` 設全域預設；**Fable 5 一律關不掉**，三種方法皆無效。
 
 明天把 Day 14 和今天的內容合起來，處理一個實務上很常見的求救訊號——**「Claude 的回答怎麼突然變淺了？」排查思路就從這兩個隱藏設定開始查起。**
 
